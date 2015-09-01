@@ -28,6 +28,11 @@ defmodule ShellQueue.Server do
     {:reply, msg, st}
   end
 
+  def handle_call(:history, _from, st) do
+    msg = Enum.into(st.cmds, [], fn {p, c} -> "#{inspect p} #{c}" end) |> Enum.join("\n")
+    {:reply, msg, st}
+  end
+
   def handle_call(:status, _from, st) do
     msg = """
       limit:    #{st.limit}
@@ -45,12 +50,18 @@ defmodule ShellQueue.Server do
     {:reply, msg, st}
   end
 
+  def handle_call(:peek, from, st) do
+    handle_call({:peek, "0"}, from, st)
+  end
   def handle_call({:peek, id}, _from, st) do
     {:reply, _show_data(st, st.running, id), st}
   end
 
+  def handle_call(:print, from, st) do
+    handle_call({:print, "0"}, from, st)
+  end
   def handle_call({:print, id}, _from, st) do
-    {:reply, _show_data(st, st.done, id), st}
+    { :reply, _show_data(st, st.done, id), _purge(st, id) }
   end
 
   def handle_call(x, _from, st) do
@@ -103,7 +114,7 @@ defmodule ShellQueue.Server do
     st = struct(st,
       queue: t,
       running: st.running ++ [ p ],
-      cmds: Map.put(st.cmds, p, h),
+      cmds: Map.put(st.cmds, p, _ts <> " " <> h),
     )
     {st, "started #{inspect p}: #{h}"}
   end
@@ -138,39 +149,44 @@ defmodule ShellQueue.Server do
 
   end
 
-  defp _show_data(st, list, id) when is_number(id) do
-    # find id'th element in list to get the port
-    p = Enum.at(list, id - 1)   # humans use 1-based indexes!
-    # use port to get 'cmds' and 'data' from st
-    Map.get(st.cmds, p, "index out of bounds")
-    <> "\n"
-    <> Map.get(st.data, p, "index out of bounds")
+  defp _show_data(st, list, id) do
+    p = _id2p(list, id)
+
+    """
+    #{inspect p} #{Map.get(st.cmds, p, "index out of bounds")}
+    #{Map.get(st.data, p, "index out of bounds")}
+    """
   end
 
-  defp _show_data(_st, _list, _id) do
-    "bad client!"
+  defp _id2p(list, id) do
+    # find id'th element in list to get the port
+    Enum.at(list, _numeric_id(id) - 1)   # humans use 1-based indexes!
+  end
+
+  defp _numeric_id(id) do
+    if String.match?(id, ~r/^\d+$/) do
+      String.to_integer(id)
+    else
+      0
+    end
+  end
+
+  defp _purge(st, id) do
+    p = _id2p(st.done, id)
+    struct(st,
+      done: st.done -- [p],
+      # cmds: Map.delete(st.cmds, p),
+      data: Map.delete(st.data, p),
+    )
   end
 
   defp _warn(st, msg) do
-    struct(st, log: st.log <> _hms <> ": " <> msg <> "\n")
+    struct(st, log: st.log <> _ts <> ": " <> msg <> "\n")
   end
 
-  defp _hms(t \\ :os.timestamp) do
-    {_, {h, m, s}} = :calendar.now_to_local_time(t)
-    :io_lib.format("~2B:~2..0B:~2..0B", [h,m,s]) |> List.flatten |> to_string
+  defp _ts(t \\ :os.timestamp) do
+    { {y, mo, d}, {h, m, s} } = :calendar.now_to_local_time(t)
+    :io_lib.format("~4B-~2..0B-~2..0B.~2..0B:~2..0B:~2..0B", [y,mo,d,h,m,s]) |> List.flatten |> to_string
   end
 
 end
-
-IO.puts :stderr, """
-{:ok, pid} = ShellQueue.Server.start_link
-:timer.sleep 500
-ShellQueue.Server.gscall(pid, :status) |> IO.write
-ShellQueue.Server.gscall(pid, {:run, "/tmp/sseq 1 7"})
-:timer.sleep 1000
-ShellQueue.Server.gscall(pid, {:run, "/tmp/sseq 3 11"})
-ShellQueue.Server.gscall(pid, {:run, "/tmp/sseq 7 13"})
-ShellQueue.Server.gscall(pid, {:run, "/tmp/sseq 11 17"})
-:timer.sleep 500
-ShellQueue.Server.gscall(pid, :status) |> IO.write
-"""
