@@ -152,7 +152,8 @@ defmodule ShellQueue.Server do
     |> _add_data(p, "EXIT_STATUS: #{es}\n")
     |> struct(
         running: st.running -- [p],
-        done:    st.done ++ [p]
+        done:    st.done ++ [p],
+        cmds:    Map.update!(st.cmds, p, fn(x) -> x <> " (" <> _ts <> " #{es})" end)
       )
     |> _run_next_in_queue
     |> (fn({st, msg}) -> _warn(st, msg) end).()
