@@ -37,10 +37,10 @@ defmodule ShellQueue do
   # ---- (service routines)
 
   def _gscall(cmd, [], pid) do
-    Server.gscall(pid, cmd) |> IO.puts
+    Server.gscall(pid, cmd) |> _safe_print
   end
   def _gscall(cmd, args, pid) do
-    Server.gscall(pid, {cmd, Enum.join(args, " ")}) |> IO.puts
+    Server.gscall(pid, {cmd, Enum.join(args, " ")}) |> _safe_print
   end
 
   defp _expand(cmd) do
@@ -71,6 +71,18 @@ defmodule ShellQueue do
 
   def _gen_server_node_name do
     "sq_" <> System.get_env("USER") |> String.to_atom
+  end
+
+  def _safe_print(x) do
+    String.chunk(x, :printable)
+    |> Enum.map(fn x ->
+      if String.printable?(x) do
+        IO.write x
+      else
+        IO.write inspect(x)
+      end
+    end)
+    IO.write "\n";
   end
 
   # ---- (usage)
