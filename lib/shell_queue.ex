@@ -7,9 +7,9 @@ defmodule ShellQueue do
   @valid_commands   @common_commands ++ @other_commands ++ Map.keys(@shortcuts)
 
   # ---- (main)
-  def main([]),             do: usage
-  def main(["-h"]),         do: usage
-  def main(["help"]),       do: usage
+  def main([]),             do: _usage
+  def main(["-h"]),         do: _usage
+  def main(["help"]),       do: _usage
 
   # start the server
   def main(["serve"]) do
@@ -36,10 +36,10 @@ defmodule ShellQueue do
 
   # ---- (service routines)
 
-  def _gscall(cmd, [], pid) do
+  defp _gscall(cmd, [], pid) do
     Server.gscall(pid, cmd) |> _safe_print
   end
-  def _gscall(cmd, args, pid) do
+  defp _gscall(cmd, args, pid) do
     Server.gscall(pid, {cmd, Enum.join(args, " ")}) |> _safe_print
   end
 
@@ -61,7 +61,7 @@ defmodule ShellQueue do
     :global.whereis_name :shellqueue
   end
 
-  def _gen_server_node_name(:qualified) do
+  defp _gen_server_node_name(:qualified) do
     n = _gen_server_node_name |> to_string
     # (FIXME) we don't know how erlang determines the short hostname so we cheat
     h = Node.self |> to_string |> String.split("@") |> Enum.at(1)
@@ -69,11 +69,11 @@ defmodule ShellQueue do
     String.to_atom(n <> "@" <> h)
   end
 
-  def _gen_server_node_name do
+  defp _gen_server_node_name do
     "sq_" <> System.get_env("USER") |> String.to_atom
   end
 
-  def _safe_print(x) do
+  defp _safe_print(x) do
     String.chunk(x, :printable)
     |> Enum.map(fn x ->
       if String.printable?(x) do
@@ -86,7 +86,7 @@ defmodule ShellQueue do
   end
 
   # ---- (usage)
-  defp usage do
+  defp _usage do
     IO.puts """
     sq -- shell queue for batch commands
 
