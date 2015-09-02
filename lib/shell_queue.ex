@@ -20,13 +20,8 @@ defmodule ShellQueue do
     # managed to become distributed, if you're troubleshooting
     IO.inspect(Node.self)
 
-    # kludge, since we don't know how to make an escript go "--no-halt"
-    receive do
-      x -> IO.puts :stderr, "stopping... got #{inspect x}"
-    end
-    # and we don't know --detached either :( so run this from shell using
-    # double fork and kill the shell, or run it in a different tab of your
-    # terminal software, or whatever
+    # thanks to Jose Valim for suggesting this as a substitute for "--no-halt"
+    :timer.sleep(:infinity)
   end
 
   def main([cmd|args]) when cmd in @valid_commands do
