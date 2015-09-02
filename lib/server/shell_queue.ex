@@ -13,24 +13,24 @@ defmodule ShellQueue.Server do
     GenServer.start_link(__MODULE__, %State{}, name: @name)
   end
 
-  # args can be a single atom, like :status, or a tuple, like {:run, cmd}, etc.
+  # args can be a single atom, like :status, or a tuple, like {:q, cmd}, etc.
   def gscall(pid, args) do
     GenServer.call(pid, args)
   end
 
   # ---- server (callbacks), one for each command
 
-  def handle_call({:run, cmd}, _from, st) do
+  def handle_call({:q, cmd}, _from, st) do
     {st, msg} = st
                 |> _add_cmd_to_queue(cmd)
                 |> _run_next_in_queue
     {:reply, msg, st}
   end
 
-  def handle_call({:force, cmd}, _from, st) do
+  def handle_call({:run, cmd}, _from, st) do
     {st, msg} = st
                 |> _add_cmd_to_queue(cmd, :top)
-                |> _run_next_in_queue(:force)
+                |> _run_next_in_queue(:run)
     {:reply, msg, st}
   end
 
@@ -106,7 +106,7 @@ defmodule ShellQueue.Server do
   defp _add_cmd_to_queue(st, cmd),       do: struct(st, queue: st.queue ++ [cmd])
   defp _add_cmd_to_queue(st, cmd, :top), do: struct(st, queue: [ cmd | st.queue ])
 
-  defp _run_next_in_queue(st, :force) do
+  defp _run_next_in_queue(st, :run) do
     # save current limit, temp'ly raise it, get stuff done, then set it back
     l = st.limit
     {st, msg} = _run_next_in_queue( struct(st, limit: length(st.running)+1) )

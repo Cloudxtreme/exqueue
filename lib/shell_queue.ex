@@ -1,9 +1,9 @@
 defmodule ShellQueue do
   alias ShellQueue.Server
 
-  @common_commands  ~w(run status peek print)
-  @other_commands   ~w(history force purge)
-  @shortcuts        %{"r" => "run", "st" => "status", "pe" => "peek", "p" => "print"}
+  @common_commands  ~w(q status peek print)
+  @other_commands   ~w(run purge history)
+  @shortcuts        %{"st" => "status", "pe" => "peek", "p" => "print"}
   @valid_commands   @common_commands ++ @other_commands ++ Map.keys(@shortcuts)
 
   # ---- (main)
@@ -26,7 +26,7 @@ defmodule ShellQueue do
 
   def main([cmd|args]) when cmd in @valid_commands do
     _gscall(String.to_atom(_expand(cmd)), args, _get_server_pid)
-    # args can be a single word (like 'status') or multiple (like 'run wget -c ...')
+    # args can be a single word (like 'status') or multiple (like 'q wget -c ...')
   end
 
   # ---- (service routines)
