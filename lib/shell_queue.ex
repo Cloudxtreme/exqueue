@@ -47,10 +47,6 @@ defmodule ShellQueue do
     Map.get(@shortcuts, cmd, cmd)
   end
 
-  defp _expand(cmd) do
-    Map.get(@shortcuts, cmd, cmd)
-  end
-
   defp _get_server_pid do
     # first we need to make *ourselves* distributed
     "sq#{System.get_pid}"

@@ -18,7 +18,7 @@ defmodule ShellQueue.Server do
     GenServer.call(pid, args)
   end
 
-  # ---- server (callbacks)
+  # ---- server (callbacks), one for each command
 
   def handle_call({:run, cmd}, _from, st) do
     {st, msg} = st
@@ -51,7 +51,7 @@ defmodule ShellQueue.Server do
       log/messages:
       #{st.log}
       """
-    # todo: number and indent the job listing
+    # flush the log
     st = struct(st, log: "")
     {:reply, msg, st}
   end
@@ -86,10 +86,10 @@ defmodule ShellQueue.Server do
     }
   end
 
+  # :data and :exit_status are the two kinds of messages a port sends
   def handle_info({p, {:data, d}}, st) do
     {:noreply, _add_data(st, p, d)}
   end
-
   def handle_info({p, {:exit_status, es}}, st) do
     {:noreply, _done(st, p, es)}
   end
@@ -103,16 +103,8 @@ defmodule ShellQueue.Server do
 
   # ---- private functions
 
-  defp _add_cmd_to_queue(st, cmd) do
-    struct(st,
-      queue: st.queue ++ [cmd]
-    )
-  end
-  defp _add_cmd_to_queue(st, cmd, :top) do
-    struct(st,
-      queue: [ cmd | st.queue ]
-    )
-  end
+  defp _add_cmd_to_queue(st, cmd),       do: struct(st, queue: st.queue ++ [cmd])
+  defp _add_cmd_to_queue(st, cmd, :top), do: struct(st, queue: [ cmd | st.queue ])
 
   defp _run_next_in_queue(st, :force) do
     # save current limit, temp'ly raise it, get stuff done, then set it back
@@ -130,9 +122,9 @@ defmodule ShellQueue.Server do
   defp _run_next_in_queue(st = %State{queue: [h|t]}) do
     p = _port_open(h)
     st = struct(st,
-      queue: t,
+      queue:   t,
       running: st.running ++ [ p ],
-      cmds: Map.put(st.cmds, p, _ts <> " " <> h),
+      cmds:    Map.put(st.cmds, p, _ts <> " " <> h),
     )
     {st, "started #{inspect p}: #{h}"}
   end
@@ -160,26 +152,23 @@ defmodule ShellQueue.Server do
     |> _add_data(p, "EXIT_STATUS: #{es}\n")
     |> struct(
         running: st.running -- [p],
-        done: st.done ++ [p]
+        done:    st.done ++ [p]
       )
     |> _run_next_in_queue
     |> (fn({st, msg}) -> _warn(st, msg) end).()
 
   end
 
-  defp _show_data(st, list, id) do
-    p = _id2p(list, id)
+  defp _show_data(st, list, id), do: _show_data(st, _id2p(list, id))
 
+  defp _show_data(_st, nil), do: "(job number out of bounds)"
+  defp _show_data(st, p),    do: """
+    #{inspect p} #{Map.get(st.cmds, p, "IF THIS PRINTS, SOMETHING IS WRONG!")}
+    #{Map.get(st.data, p, "(no output produced??)")}
     """
-    #{inspect p} #{Map.get(st.cmds, p, "index out of bounds")}
-    #{Map.get(st.data, p, "index out of bounds")}
-    """
-  end
 
-  defp _id2p(list, id) do
-    # find id'th element in list to get the port
-    Enum.at(list, _numeric_id(id) - 1)   # humans use 1-based indexes!
-  end
+  # find id'th element in list to get the port (note: humans use 1-based indexing)
+  defp _id2p(list, id), do: Enum.at(list, _numeric_id(id) - 1)
 
   defp _numeric_id(id) do
     if String.match?(id, ~r/^\d+$/) do
@@ -193,7 +182,6 @@ defmodule ShellQueue.Server do
     p = _id2p(st.done, id)
     struct(st,
       done: st.done -- [p],
-      # cmds: Map.delete(st.cmds, p),
       data: Map.delete(st.data, p),
     )
   end
