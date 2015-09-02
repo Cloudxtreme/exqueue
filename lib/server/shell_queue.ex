@@ -24,7 +24,13 @@ defmodule ShellQueue.Server do
     {st, msg} = st
                 |> _add_cmd_to_queue(cmd)
                 |> _run_next_in_queue
+    {:reply, msg, st}
+  end
 
+  def handle_call({:force, cmd}, _from, st) do
+    {st, msg} = st
+                |> _add_cmd_to_queue(cmd, :top)
+                |> _run_next_in_queue(:force)
     {:reply, msg, st}
   end
 
@@ -101,6 +107,18 @@ defmodule ShellQueue.Server do
     struct(st,
       queue: st.queue ++ [cmd]
     )
+  end
+  defp _add_cmd_to_queue(st, cmd, :top) do
+    struct(st,
+      queue: [ cmd | st.queue ]
+    )
+  end
+
+  defp _run_next_in_queue(st, :force) do
+    # save current limit, temp'ly raise it, get stuff done, then set it back
+    l = st.limit
+    {st, msg} = _run_next_in_queue( struct(st, limit: length(st.running)+1) )
+    { struct(st, limit: l), msg }
   end
 
   defp _run_next_in_queue(st = %State{queue: []}) do
