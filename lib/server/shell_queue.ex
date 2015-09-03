@@ -20,26 +20,26 @@ defmodule ShellQueue.Server do
 
   # ---- server (callbacks), one for each command
 
-  def handle_call({:q, cmd}, _from, st) do
+  def handle_call({:q, pwd, cmd}, _from, st) do
     {st, msg} = st
-                |> _add_cmd_to_queue(cmd)
+                |> _add_cmd_to_queue(pwd, cmd)
                 |> _run_next_in_queue
     {:reply, msg, st}
   end
 
-  def handle_call({:run, cmd}, _from, st) do
+  def handle_call({:run, pwd, cmd}, _from, st) do
     {st, msg} = st
-                |> _add_cmd_to_queue(cmd, :top)
+                |> _add_cmd_to_queue(pwd, cmd, :top)
                 |> _run_next_in_queue(:run)
     {:reply, msg, st}
   end
 
-  def handle_call(:history, _from, st) do
+  def handle_call({:history, _pwd}, _from, st) do
     msg = Enum.into(st.cmds, [], fn {p, c} -> "#{inspect p} #{c}" end) |> Enum.join("\n")
     {:reply, msg, st}
   end
 
-  def handle_call(:status, _from, st) do
+  def handle_call({:status, _pwd}, _from, st) do
     msg = """
       limit:    #{st.limit}
       queued:
@@ -56,17 +56,17 @@ defmodule ShellQueue.Server do
     {:reply, msg, st}
   end
 
-  def handle_call(:peek, from, st) do
-    handle_call({:peek, "0"}, from, st)
+  def handle_call({:peek, _pwd}, from, st) do
+    handle_call({:peek, _pwd, "0"}, from, st)
   end
-  def handle_call({:peek, id}, _from, st) do
+  def handle_call({:peek, _pwd, id}, _from, st) do
     {:reply, _show_data(st, st.running, id), st}
   end
 
-  def handle_call(:print, from, st) do
-    handle_call({:print, "0"}, from, st)
+  def handle_call({:print, _pwd}, from, st) do
+    handle_call({:print, _pwd, "0"}, from, st)
   end
-  def handle_call({:print, id}, _from, st) do
+  def handle_call({:print, _pwd, id}, _from, st) do
     { :reply, _show_data(st, st.done, id), _purge(st, id) }
   end
 
@@ -103,8 +103,8 @@ defmodule ShellQueue.Server do
 
   # ---- private functions
 
-  defp _add_cmd_to_queue(st, cmd),       do: struct(st, queue: st.queue ++ [cmd])
-  defp _add_cmd_to_queue(st, cmd, :top), do: struct(st, queue: [ cmd | st.queue ])
+  defp _add_cmd_to_queue(st, pwd, cmd),       do: struct(st, queue: st.queue ++ [{pwd, cmd}])
+  defp _add_cmd_to_queue(st, pwd, cmd, :top), do: struct(st, queue: [ {pwd, cmd} | st.queue ])
 
   defp _run_next_in_queue(st, :run) do
     # save current limit, temp'ly raise it, get stuff done, then set it back
@@ -124,16 +124,16 @@ defmodule ShellQueue.Server do
     st = struct(st,
       queue:   t,
       running: st.running ++ [ p ],
-      cmds:    Map.put(st.cmds, p, _ts <> " " <> h),
+      cmds:    Map.put(st.cmds, p, _ts <> " " <> inspect(h)),
     )
-    {st, "started #{inspect p}: #{h}"}
+    {st, "started #{inspect p}: #{inspect h}"}
   end
 
   # ---- service routines
 
-  defp _port_open(cmd) do
+  defp _port_open({pwd, cmd}) do
     opts = ~w(stderr_to_stdout exit_status binary)a     # todo: cd
-    Port.open({:spawn_executable, System.get_env("SHELL")}, [{:args, ["-c", cmd]} | opts])
+    Port.open({:spawn_executable, System.get_env("SHELL")}, [{:cd, pwd}, {:args, ["-c", cmd]} | opts])
   end
 
   defp _print_list(l, into \\ "") do
@@ -153,7 +153,7 @@ defmodule ShellQueue.Server do
     |> struct(
         running: st.running -- [p],
         done:    st.done ++ [p],
-        cmds:    Map.update!(st.cmds, p, fn(x) -> x <> " (" <> _ts <> " #{es})" end)
+        cmds:    Map.update!(st.cmds, p, fn(x) -> "(#{_ts} #{es}) #{x}" end)
       )
     |> _run_next_in_queue
     |> (fn({st, msg}) -> _warn(st, msg) end).()
@@ -192,8 +192,8 @@ defmodule ShellQueue.Server do
   end
 
   defp _ts(t \\ :os.timestamp) do
-    { {y, mo, d}, {h, m, s} } = :calendar.now_to_local_time(t)
-    :io_lib.format("~4B-~2..0B-~2..0B.~2..0B:~2..0B:~2..0B", [y,mo,d,h,m,s]) |> List.flatten |> to_string
+    { {_, _, d}, {h, m, s} } = :calendar.now_to_local_time(t)
+    :io_lib.format("~2..0B.~2..0B:~2..0B:~2..0B", [d,h,m,s]) |> List.flatten |> to_string
   end
 
 end

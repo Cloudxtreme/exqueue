@@ -25,17 +25,19 @@ defmodule ShellQueue do
   end
 
   def main([cmd|args]) when cmd in @valid_commands do
-    _gscall(String.to_atom(_expand(cmd)), args, _get_server_pid)
+    _gscall(_get_server_pid, String.to_atom(_expand(cmd)), args)
     # args can be a single word (like 'status') or multiple (like 'q wget -c ...')
   end
 
   # ---- (service routines)
 
-  defp _gscall(cmd, [], pid) do
-    Server.gscall(pid, cmd) |> _safe_print
+  defp _cwd, do: File.cwd |> elem(1)
+
+  defp _gscall(pid, cmd, []) do
+    Server.gscall(pid, {cmd, _cwd}) |> _safe_print
   end
-  defp _gscall(cmd, args, pid) do
-    Server.gscall(pid, {cmd, Enum.join(args, " ")}) |> _safe_print
+  defp _gscall(pid, cmd, args) do
+    Server.gscall(pid, {cmd, _cwd, Enum.join(args, " ")}) |> _safe_print
   end
 
   defp _expand(cmd) do
