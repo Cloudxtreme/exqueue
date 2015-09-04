@@ -14,8 +14,8 @@ defmodule ShellQueue.Server do
   end
 
   # args can be a single atom, like :status, or a tuple, like {:q, cmd}, etc.
-  def gscall(pid, args) do
-    GenServer.call(pid, args)
+  def gscall(args) do
+    GenServer.call(@name, args)
   end
 
   # ---- server (callbacks), one for each command

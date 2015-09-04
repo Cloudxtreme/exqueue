@@ -25,7 +25,8 @@ defmodule ShellQueue do
   end
 
   def main([cmd|args]) when cmd in @valid_commands do
-    _gscall(_get_server_pid, String.to_atom(_expand(cmd)), args)
+    _connect
+    _gscall(String.to_atom(_expand(cmd)), args)
     # args can be a single word (like 'status') or multiple (like 'q wget -c ...')
   end
 
@@ -37,18 +38,18 @@ defmodule ShellQueue do
 
   defp _cwd, do: File.cwd!
 
-  defp _gscall(pid, cmd, []) do
-    Server.gscall(pid, {cmd, _cwd}) |> _safe_print
+  defp _gscall(cmd, []) do
+    Server.gscall({cmd, _cwd}) |> _safe_print
   end
-  defp _gscall(pid, cmd, args) do
-    Server.gscall(pid, {cmd, _cwd, Enum.join(args, " ")}) |> _safe_print
+  defp _gscall(cmd, args) do
+    Server.gscall({cmd, _cwd, Enum.join(args, " ")}) |> _safe_print
   end
 
   defp _expand(cmd) do
     Map.get(@shortcuts, cmd, cmd)
   end
 
-  defp _get_server_pid do
+  defp _connect do
     # first we need to make *ourselves* distributed
     "sq#{System.get_pid}"
     |> String.to_atom
@@ -59,7 +60,6 @@ defmodule ShellQueue do
       System.halt(1)
     end
     :timer.sleep 250    # otherwise the next command fails (FIXME)
-    :global.whereis_name :shellqueue
   end
 
   defp _gen_server_node_name(:qualified) do
