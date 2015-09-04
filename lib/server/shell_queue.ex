@@ -41,14 +41,15 @@ defmodule ShellQueue.Server do
 
   def handle_call({:status, _pwd}, _from, st) do
     msg = """
-      limit:    #{st.limit}
-      queued:
+      shell_queue status
+      ------------------
+      QUEUED:
       #{_print_list(st.queue)}
-      running:
+      RUNNING:
       #{_print_list(st.running)}
-      done:
+      DONE:
       #{_print_list(st.done)}
-      log/messages:
+      LOG/MESSAGES:
       #{st.log}
       """
     # flush the log

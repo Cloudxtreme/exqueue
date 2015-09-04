@@ -7,7 +7,7 @@ defmodule ShellQueue do
   @valid_commands   @common_commands ++ @other_commands ++ Map.keys(@shortcuts)
 
   # ---- (main)
-  def main([]),             do: _usage
+  def main([]),             do: (_one_line_help; main(["status"]))
   def main(["-h"]),         do: _usage
   def main(["help"]),       do: _usage
 
@@ -27,6 +27,10 @@ defmodule ShellQueue do
   def main([cmd|args]) when cmd in @valid_commands do
     _gscall(_get_server_pid, String.to_atom(_expand(cmd)), args)
     # args can be a single word (like 'status') or multiple (like 'q wget -c ...')
+  end
+
+  def main([cmd|args]) do # not a valid command; default is "q"
+    main([ "q" , cmd | args])
   end
 
   # ---- (service routines)
@@ -82,7 +86,8 @@ defmodule ShellQueue do
     IO.write "\n";
   end
 
-  # ---- (usage)
+  # ---- (help and usage)
+  defp _one_line_help, do: IO.puts "(please run with '-h' for help)"
   defp _usage do
     IO.puts """
     sq -- shell queue for batch commands
