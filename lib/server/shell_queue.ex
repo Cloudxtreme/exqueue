@@ -101,10 +101,14 @@ defmodule ShellQueue.Server do
     }
   end
 
-  # ---- private functions
+  # ---- queue handling functions
+
+  # -------- return "state"
 
   defp _add_cmd_to_queue(st, pwd, cmd),       do: struct(st, queue: st.queue ++ [{pwd, cmd}])
   defp _add_cmd_to_queue(st, pwd, cmd, :top), do: struct(st, queue: [ {pwd, cmd} | st.queue ])
+
+  # -------- return "state", "message"
 
   defp _run_next_in_queue(st, :run) do
     # save current limit, temp'ly raise it, get stuff done, then set it back
@@ -129,16 +133,9 @@ defmodule ShellQueue.Server do
     {st, "started #{inspect p}: #{inspect h}"}
   end
 
-  # ---- service routines
+  # ---- service routines that touch the "state"
 
-  defp _port_open({pwd, cmd}) do
-    opts = ~w(stderr_to_stdout exit_status binary)a     # todo: cd
-    Port.open({:spawn_executable, System.get_env("SHELL")}, [{:cd, pwd}, {:args, ["-c", cmd]} | opts])
-  end
-
-  defp _print_list(l, into \\ "") do
-    Enum.into(l, into, fn x -> inspect(x) <> "\n" end)
-  end
+  # -------- return "state"
 
   defp _add_data(st, p, d) do
     struct(st,
@@ -160,6 +157,29 @@ defmodule ShellQueue.Server do
 
   end
 
+  defp _purge(st, id) do
+    p = _id2p(st.done, id)
+    struct(st,
+      done: st.done -- [p],
+      data: Map.delete(st.data, p),
+    )
+  end
+
+  defp _warn(st, msg) do
+    struct(st, log: st.log <> _ts <> ": " <> msg <> "\n")
+  end
+
+  # ---- service routines that don't touch the "state"
+
+  defp _port_open({pwd, cmd}) do
+    opts = ~w(stderr_to_stdout exit_status binary)a
+    Port.open({:spawn_executable, System.get_env("SHELL")}, [{:cd, pwd}, {:args, ["-c", cmd]} | opts])
+  end
+
+  defp _print_list(l, into \\ "") do
+    Enum.into(l, into, fn x -> inspect(x) <> "\n" end)
+  end
+
   defp _show_data(st, list, id), do: _show_data(st, _id2p(list, id))
 
   defp _show_data(_st, nil), do: "(job number out of bounds)"
@@ -177,18 +197,6 @@ defmodule ShellQueue.Server do
     else
       0
     end
-  end
-
-  defp _purge(st, id) do
-    p = _id2p(st.done, id)
-    struct(st,
-      done: st.done -- [p],
-      data: Map.delete(st.data, p),
-    )
-  end
-
-  defp _warn(st, msg) do
-    struct(st, log: st.log <> _ts <> ": " <> msg <> "\n")
   end
 
   defp _ts(t \\ :os.timestamp) do
