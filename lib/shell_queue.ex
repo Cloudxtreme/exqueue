@@ -35,7 +35,7 @@ defmodule ShellQueue do
 
   # ---- (service routines)
 
-  defp _cwd, do: File.cwd |> elem(1)
+  defp _cwd, do: File.cwd!
 
   defp _gscall(pid, cmd, []) do
     Server.gscall(pid, {cmd, _cwd}) |> _safe_print
