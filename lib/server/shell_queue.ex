@@ -129,7 +129,7 @@ defmodule ShellQueue.Server do
     st = struct(st,
       queue:   t,
       running: st.running ++ [ p ],
-      cmds:    Map.put(st.cmds, p, _ts <> " " <> inspect(h)),
+      cmds:    Map.put(st.cmds, p, _ts <> " " <> elem(h, 0) <> "\n\t" <> elem(h, 1)),
     )
     {st, "started #{inspect p}: #{inspect h}"}
   end
