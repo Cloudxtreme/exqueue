@@ -56,7 +56,9 @@ defmodule ShellQueue do
     |> Node.start(:shortnames)
 
     unless Node.connect(_gen_server_node_name(:qualified)) do
-      IO.puts :stderr, "FATAL: #{inspect self} #{Node.self} could not connect to #{_gen_server_node_name(:qualified)}"
+      mescript = :escript.script_name |> to_string
+      System.cmd("bash", ["-c", "( ( #{mescript} serve &>/dev/null & ) )"])
+      IO.puts :stderr, "server spawned; please rerun your command"
       System.halt(1)
     end
     :timer.sleep 250    # otherwise the next command fails (FIXME)
