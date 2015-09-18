@@ -1,11 +1,11 @@
-defmodule ShellQueue.Server do
+defmodule ExQueue.Server do
   use GenServer
 
   defmodule State do
     defstruct limit: 1, log: "", queue: [], running: [], done: [], cmds: %{}, data: %{}
   end
 
-  @name {:global, :shellqueue}
+  @name {:global, :exqueue}
 
   # ---- client API
 
@@ -41,7 +41,7 @@ defmodule ShellQueue.Server do
 
   def handle_call({:status, _pwd}, _from, st) do
     msg = """
-      shell_queue status
+      exqueue status
       ------------------
       QUEUED:
       #{_print_list(st.queue)}
@@ -82,7 +82,7 @@ defmodule ShellQueue.Server do
 
   def handle_cast(x, st) do
     {:noreply, st
-      |> _warn("SQ SERVER: unexpected CAST message:")
+      |> _warn("XQ SERVER: unexpected CAST message:")
       |> _warn(inspect(x))
     }
   end
@@ -97,7 +97,7 @@ defmodule ShellQueue.Server do
 
   def handle_info(x, st) do
     {:noreply, st
-      |> _warn("SQ SERVER: unexpected INFO message:")
+      |> _warn("XQ SERVER: unexpected INFO message:")
       |> _warn(inspect(x))
     }
   end
@@ -119,10 +119,10 @@ defmodule ShellQueue.Server do
   end
 
   defp _run_next_in_queue(st = %State{queue: []}) do
-    {st, "ShellQueue: queue is empty"}
+    {st, "ExQueue: queue is empty"}
   end
   defp _run_next_in_queue(st = %State{limit: l, running: r, queue: q}) when length(r) >= l do
-    {st, "ShellQueue: #{length(r)} jobs running (limit #{l}), #{length(q)} in queue"}
+    {st, "ExQueue: #{length(r)} jobs running (limit #{l}), #{length(q)} in queue"}
   end
   defp _run_next_in_queue(st = %State{queue: [h|t]}) do
     p = _port_open(h)

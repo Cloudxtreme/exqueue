@@ -1,5 +1,5 @@
-defmodule ShellQueue do
-  alias ShellQueue.Server
+defmodule ExQueue do
+  alias ExQueue.Server
 
   @common_commands  ~w(q status peek print)
   @other_commands   ~w(run purge history)
@@ -51,7 +51,7 @@ defmodule ShellQueue do
 
   defp _connect do
     # first we need to make *ourselves* distributed
-    "sq#{System.get_pid}"
+    "xq#{System.get_pid}"
     |> String.to_atom
     |> Node.start(:shortnames)
 
@@ -73,7 +73,7 @@ defmodule ShellQueue do
   end
 
   defp _gen_server_node_name do
-    "sq_" <> System.get_env("USER") |> String.to_atom
+    "xq_" <> System.get_env("USER") |> String.to_atom
   end
 
   defp _safe_print(x) do
@@ -92,7 +92,7 @@ defmodule ShellQueue do
   defp _one_line_help, do: IO.puts "(please run with '-h' for help)"
   defp _usage do
     IO.puts """
-    sq -- shell queue for batch commands
+    xq -- shell queue for batch commands
 
     This 'usage' message is only a memory-jogger; you need to read the README
     for an intro and more details.

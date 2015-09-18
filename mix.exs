@@ -1,11 +1,11 @@
-defmodule ShellQueue.Mixfile do
+defmodule ExQueue.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :shell_queue,
+    [app: :exqueue,
      version: "0.0.1",
      elixir: "~> 1.0",
-     escript: [main_module: ShellQueue, embed_elixir: true ],
+     escript: [main_module: ExQueue, embed_elixir: true ],
      deps: deps]
   end
 
