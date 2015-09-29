@@ -55,13 +55,27 @@ defmodule ExQueue do
     |> String.to_atom
     |> Node.start(:shortnames)
 
+    # *then* we try to connect.  The '2' is number of attempts
+    _connect(2)
+
+    :timer.sleep 250    # otherwise the next command fails (FIXME)
+  end
+
+  defp _connect(0) do
+    IO.puts "unable to connect; giving up"
+  end
+  defp _connect(tries) do
     unless Node.connect(_gen_server_node_name(:qualified)) do
       mescript = :escript.script_name |> to_string
       System.cmd("bash", ["-c", "( ( #{mescript} serve &>/dev/null & ) )"])
-      IO.puts :stderr, "server spawned; please rerun your command"
-      System.halt(1)
+      IO.puts :stderr, "server spawned"
+
+      # give it some time!
+      :timer.sleep 500
+
+      # try again
+      _connect(tries - 1)
     end
-    :timer.sleep 250    # otherwise the next command fails (FIXME)
   end
 
   defp _gen_server_node_name(:qualified) do
