@@ -1,13 +1,13 @@
-# ExQueue
+# ExQueue -- shell command execution queue
 
 `exqueue` is a command to manage an "execution queue" -- a queue of pending
 shell commands to execute.  It will run one job at a time.  `exqueue` is best
-for batch programs where the output is small-ish (wget for example); **it
-cannot be used for programs which require user input**.
+for batch programs where the output is small-ish (`wget --progress=dot:mega`
+for example); **it cannot be used for programs which require user input**.
 
 I've aliased it to `xq` so many of the examples will use that.  I recommend
 you do too; `exqueue` is too long even with completion, especially because I
-ex-pect to have many more commands starting with "ex" ;-)
+ex-pect to have many more ex-tremely useful commands starting with "ex" ;-)
 
 The main features are: add commands to queue, check queue/running/finished job
 status, peek at output of running program(s), print output of finished
@@ -17,21 +17,40 @@ that this will mostly be used for IO-bound jobs (downloads, backups and other
 file system level tasks, git commands, etc.)  If you need more parallelism,
 try [exargs](https://github.com/sitaramc/exargs).
 
+# TL;DR / Intro
+
+    # generic example
+    xq some-command some-args
+
+    # wget example
+    xq wget --progress=dot:mega http://files.gitminutes.com/episodes/37.mp3
+
+    # or if you want to use exargs (see http://github.com/sitaramc/exargs) to
+    # queue up 4 downloads one after the other.  If nothing else is running,
+    # this will start downloading 37.mp3 and queue the rest.
+    xa -1 "xq wget --progress=dot:mega http://files.gitminutes.com/episodes/%.mp3" {37..40}
+
+    # status
+    xq              # or, 'xq status'; see 'xq -h' for commands and shortcuts
+
+    # peek at the in-progress output of the currently running command
+    xq pe           # or, 'xq peek'
+
+    # print the output of the *last* completed command
+    xq p            # or, 'xq print'
+
 # Commands
 
-Note that the first time you run it after a reboot, it will fire off the
-server component and come back with an exit code of "1", so you may need to
-re-run your command.
-
-After that, the following sub-commands can be used:
+The following sub-commands can be used:
 
 *   `q`: queue up a command.  If nothing else is running, the command starts
     immediately.  This is the default if you directly give a shell command
     (i.e., if you supply some arguments but they are not one of the recognised
     'exqueue' sub-commands).
 
-*   `st` or `status`: check status.  Looks somewhat like this (yeah it's ugly;
-    I'm waiting for some inspiration there!):
+*   `status`: check status.  This is the default command if you run just `xq`,
+    with absolutely no arguments.  The output looks somewhat like this (yeah
+    it's ugly; I'm waiting for some inspiration there!):
 
         limit:    1
         queued:
@@ -57,16 +76,17 @@ After that, the following sub-commands can be used:
 
     In the example `status` output above, `print` will show you the output of
     job 2249, then delete it from the status.  A subsequent `print` will then
-    show you job 2138 (unless the currently running job (2254) finishes by
+    show you job 2138 (unless the currently running job (2254) finishes before
     then!)
 
     If you want to see the output of jobs other than the last one in the list,
     use `xq p 1` for the first one, `xq p 2` for the second, etc.
 
 *   `run`: forcibly run a command even if something else is already running.
-    Essentially bypasses the "one job at a time" limit.  Note that jobs in
-    queue are not affected by this; they will still wait till nothing else is
-    running before they can start.
+    Essentially bypasses the "one job at a time" limit.  Note that jobs
+    already in the queue *will* still wait till nothing else is running before
+    they can start (i.e., both the original job *and* the queue-jumper must
+    finish before the next job in the queue is picked up).
 
 *   Check the `history` of commands.  When you `print` the output of a job,
     the output is deleted from memory, but the command name, start and end
