@@ -1,6 +1,5 @@
 # we assume 'mix escript.build' is done.  The 'pwd' test also assumes that the
-# command 'xq' is uptodate.  And finally, we don't start the "serve"r.  That
-# has to be done manually before running 'mix test'.
+# command 'xq' is uptodate.
 
 defmodule ExQueueTest do
   use ExUnit.Case
@@ -12,7 +11,7 @@ defmodule ExQueueTest do
     cwd = File.cwd!
 
     o1 = :os.cmd('./exqueue pwd') |> to_string
-    assert String.match?(o1, ~r(^started #Port<[0-9.]+>: {"#{cwd}", "pwd"}))
+    assert String.match?(o1, ~r(started #Port<[0-9.]+>: {"#{cwd}", "pwd"}))
 
     o1 = :os.cmd('cd /tmp; xq q pwd') |> to_string
     assert String.match?(o1, ~r(^started #Port<[0-9.]+>: {"/tmp", "pwd"}))
