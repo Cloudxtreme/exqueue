@@ -35,7 +35,7 @@ defmodule ExQueue.Server do
   end
 
   def handle_call({:history, _pwd}, _from, st) do
-    msg = Enum.into(st.cmds, [], fn {p, c} -> "#{inspect p} #{c}" end) |> Enum.join("\n")
+    msg = Enum.into(st.cmds, [], fn {p, c} -> "#{inspect p}\t\t#{c}" end) |> Enum.join("\n")
     {:reply, msg, st}
   end
 
@@ -129,7 +129,7 @@ defmodule ExQueue.Server do
     st = struct(st,
       queue:   t,
       running: st.running ++ [ p ],
-      cmds:    Map.put(st.cmds, p, _ts <> " " <> elem(h, 0) <> "\n\t" <> elem(h, 1)),
+      cmds:    Map.put(st.cmds, p, elem(h, 0) <> "\n\t" <> _ts <> "\t" <> elem(h, 1)),
     )
     {st, "started #{inspect p}: #{inspect h}"}
   end
@@ -147,11 +147,11 @@ defmodule ExQueue.Server do
   defp _done(st, p, es) do
     # todo: add a new field "failed" and update it if es != 0
     st
-    |> _add_data(p, "EXIT_STATUS: #{es}\n")
+    |> _add_data(p, "EXIT_STATUS: #{es}")
     |> struct(
         running: st.running -- [p],
         done:    st.done ++ [p],
-        cmds:    Map.update!(st.cmds, p, fn(x) -> "(#{_ts} #{es}) #{x}" end)
+        cmds:    Map.update!(st.cmds, p, fn(x) -> x <> "\n\t" <> _ts <> "\t(#{es})" end)
       )
     |> _run_next_in_queue
     |> (fn({st, msg}) -> _warn(st, msg) end).()
