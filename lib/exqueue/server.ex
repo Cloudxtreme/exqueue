@@ -34,6 +34,23 @@ defmodule ExQueue.Server do
     {:reply, msg, st}
   end
 
+  def handle_call({:limit, _pwd, new}, _from, st) do
+    if String.match?(new, ~r/^\d+$/) do
+      {st, msg} = st
+                  |> struct(limit: String.to_integer(new))
+                  |> _run_next_in_queue
+                  # ideally, you should do all this in a new fun that sets the
+                  # limit, then runs _run_next_in_queue as many times as
+                  # needed to fill the queue, instead of adding just *one*
+                  # task.  Ignored for now... I don't expect to be making the
+                  # limit jump more than one step up.  (Workaround if needed:
+                  # just run the same limit command multiple times!)
+      {:reply, "ok\n" <> msg, st}
+    else
+      {:reply, "bad number", st}
+    end
+  end
+
   def handle_call({:history, _pwd}, _from, st) do
     msg = Enum.into(st.cmds, [], fn {p, c} -> "#{inspect p}\t\t#{c}" end) |> Enum.join("\n")
     {:reply, msg, st}
@@ -41,8 +58,8 @@ defmodule ExQueue.Server do
 
   def handle_call({:status, _pwd}, _from, st) do
     msg = """
-      exqueue status
-      ------------------
+      LIMIT: #{st.limit}
+
       QUEUED:
       #{_print_list(st.queue)}
       RUNNING:

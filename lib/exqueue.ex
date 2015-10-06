@@ -2,7 +2,7 @@ defmodule ExQueue do
   alias ExQueue.Server
 
   @common_commands  ~w(q status peek print)
-  @other_commands   ~w(run purge history)
+  @other_commands   ~w(run limit purge history)
   @shortcuts        %{"pe" => "peek", "p" => "print", "h" => "history"}
   @valid_commands   @common_commands ++ @other_commands ++ Map.keys(@shortcuts)
 

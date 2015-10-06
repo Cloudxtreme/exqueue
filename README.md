@@ -88,6 +88,11 @@ The following sub-commands can be used:
     they can start (i.e., both the original job *and* the queue-jumper must
     finish before the next job in the queue is picked up).
 
+*   `limit`: change the limit.  If the new limit is greater than the number of
+    jobs currently running, the next job in the queue is started.  Running
+    jobs are not killed if you reduce the limit.  If you set it to zero, the
+    queue is effectively blocked, even if running jobs complete.
+
 *   Check the `history` of commands.  When you `print` the output of a job,
     the output is deleted from memory, but the command name, start and end
     times, and exit status, are kept forever.  (Well... until you kill the
