@@ -2,7 +2,7 @@ defmodule ExQueue.Server do
   use GenServer
 
   defmodule State do
-    defstruct limit: 1, log: "", queue: [], running: [], done: [], cmds: %{}, data: %{}
+    defstruct limit: 1, log: "", queue: [], running: [], done: [], history: %{}, data: %{}
   end
 
   @name {:global, :exqueue}
@@ -51,8 +51,17 @@ defmodule ExQueue.Server do
     end
   end
 
+  def handle_call({:errors, _pwd}, _from, st) do
+    msg = st.history
+          |> Enum.filter(fn {_p,h} -> h[:status] end)
+          |> Enum.filter(fn {_p,h} -> h[:status] > 0 end)
+          |> Enum.into([], &_print_history_item/1)
+          |> Enum.join("\n")
+    {:reply, msg, st}
+  end
+
   def handle_call({:history, _pwd}, _from, st) do
-    msg = Enum.into(st.cmds, [], fn {p, c} -> "#{inspect p}\t\t#{c}" end) |> Enum.join("\n")
+    msg = Enum.into(st.history, [], &_print_history_item/1) |> Enum.join("\n")
     {:reply, msg, st}
   end
 
@@ -146,7 +155,7 @@ defmodule ExQueue.Server do
     st = struct(st,
       queue:   t,
       running: st.running ++ [ p ],
-      cmds:    Map.put(st.cmds, p, elem(h, 0) <> "\n\t" <> _ts <> "\t" <> elem(h, 1)),
+      history: Map.put(st.history, p, %{begin: _ts, pwd: elem(h,0), cmd: elem(h, 1)})
     )
     {st, "started #{inspect p}: #{inspect h}"}
   end
@@ -168,7 +177,9 @@ defmodule ExQueue.Server do
     |> struct(
         running: st.running -- [p],
         done:    st.done ++ [p],
-        cmds:    Map.update!(st.cmds, p, fn(x) -> x <> "\n\t" <> _ts <> "\t(#{es})" end)
+        history: Map.update!(st.history, p, fn(x) ->
+          x |> Map.put(:end, _ts) |> Map.put(:status, es)
+        end)
       )
     |> _run_next_in_queue
     |> (fn({st, msg}) -> _warn(st, msg) end).()
@@ -202,7 +213,7 @@ defmodule ExQueue.Server do
 
   defp _show_data(_st, nil), do: "(job number out of bounds)"
   defp _show_data(st, p),    do: """
-    #{inspect p} #{Map.get(st.cmds, p, "IF THIS PRINTS, SOMETHING IS WRONG!")}
+    #{_print_history_item{p, Map.get(st.history, p, "IF THIS PRINTS, SOMETHING IS WRONG!")}}
     #{Map.get(st.data, p, "(no output produced??)")}
     """
 
@@ -220,6 +231,33 @@ defmodule ExQueue.Server do
   defp _ts(t \\ :os.timestamp) do
     { {_, _, d}, {h, m, s} } = :calendar.now_to_local_time(t)
     :io_lib.format("~2..0B.~2..0B:~2..0B:~2..0B", [d,h,m,s]) |> List.flatten |> to_string
+  end
+
+  defp _print_history_item({pid, history}) do
+    msg = """
+      \tcmd:\t#{history[:cmd]}
+      \tpwd:\t#{history[:pwd]}
+      \tbegin:\t#{history[:begin]}
+      """
+    if history[:end] do
+      msg = inspect(pid) <> "\n" <> msg <> """
+        \tend:\t#{history[:end]}
+        \texit:\t#{history[:status]}
+        """
+    else
+      msg = "#{inspect(pid)} (#{_os_pid(pid)})" <> "\n" <> msg
+    end
+    msg
+  end
+
+  defp _os_pid(:undefined) do
+    "exited"
+  end
+  defp _os_pid(info) when is_list(info) do
+    info[:os_pid] |> to_string
+  end
+  defp _os_pid(port) do
+    _os_pid Port.info(port)
   end
 
 end
