@@ -202,6 +202,7 @@ defmodule ExQueue.Server do
 
   defp _port_open({pwd, cmd}) do
     opts = ~w(stderr_to_stdout exit_status binary)a
+    cmd = cmd <> " < /dev/null"
     Port.open({:spawn_executable, System.get_env("SHELL")}, [{:cd, pwd}, {:args, ["-c", cmd]} | opts])
   end
 
