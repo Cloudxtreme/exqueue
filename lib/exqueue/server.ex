@@ -65,6 +65,14 @@ defmodule ExQueue.Server do
     {:reply, msg, st}
   end
 
+  def handle_call({:cancel, _pwd, patt}, _from, st = %State{queue: q}) do
+    cancelled = Enum.filter(q, fn {_pwd, cmd} -> String.match?(cmd, ~r(#{patt})) end)
+    msg = Enum.into(cancelled, "", fn x -> "#{inspect x}\n" end)
+      <> "#{Enum.count(cancelled)} jobs cancelled"
+    st = struct(st, queue: q -- cancelled)
+    {:reply, msg, st}
+  end
+
   def handle_call({:status, _pwd}, _from, st) do
     msg = """
       LIMIT: #{st.limit}
