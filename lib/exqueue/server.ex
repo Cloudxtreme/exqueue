@@ -73,6 +73,22 @@ defmodule ExQueue.Server do
     {:reply, msg, st}
   end
 
+  def handle_call({:redo, _pwd, patt}, _from, st = %State{history: h, queue: q}) do
+    # get a list of new jobs
+    nj =  h # remember, h is %{pid => %{:cmd => ..., :pwd => ..., ...}}
+          |>  Enum.flat_map(fn {_pid, j = %{pwd: pwd, cmd: cmd}} ->
+                # completed jobs (i.e., having ':end') with 'cmd' matching 'patt'
+                if j[:end] && String.match?(cmd, ~r(#{patt})),
+                  do:   [{pwd, cmd}],
+                  else: []
+              end)
+    msg1 = Enum.into(nj, "", fn x -> "#{inspect x}\n" end)
+      <> "#{Enum.count(nj)} jobs queued\n"
+    {st, msg2} =  struct(st, queue: nj ++ q)
+                  |> _run_next_in_queue
+    {:reply, msg1 <> msg2, st}
+  end
+
   def handle_call({:status, _pwd}, _from, st) do
     msg = """
       LIMIT: #{st.limit}
