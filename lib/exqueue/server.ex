@@ -120,11 +120,11 @@ defmodule ExQueue.Server do
       LIMIT: #{st.limit}
 
       QUEUED:
-      #{_print_list(st.queue)}
+      #{_print_list(st.queue, st)}
       RUNNING:
-      #{_print_list(st.running)}
+      #{_print_list(st.running, st)}
       DONE:
-      #{_print_list(st.done)}
+      #{_print_list(st.done, st)}
       LOG/MESSAGES:
       #{st.log}
       """
@@ -223,7 +223,6 @@ defmodule ExQueue.Server do
   defp _done(st, p, es) do
     # todo: add a new field "failed" and update it if es != 0
     st
-    |> _add_data(p, "EXIT_STATUS: #{es}")
     |> struct(
         running: st.running -- [p],
         done:    st.done ++ [p],
@@ -258,8 +257,27 @@ defmodule ExQueue.Server do
     Port.open({:spawn_executable, System.get_env("SHELL")}, [{:cd, pwd}, {:args, ["-c", cmd]} | opts])
   end
 
-  defp _print_list(l, into \\ "") do
-    Enum.into(l, into, fn x -> inspect(x) <> "\n" end)
+  defp _print_list(l, st) do
+    Enum.into(l, "", fn p ->
+      # print the port number
+      inspect(p) <>
+      # then the exit status (if any) on the same line as the port number, followed by the command
+      case Map.get(st.history, p) do
+        nil ->  "\n"
+        x   ->
+          case x[:status] do
+            nil ->  ""
+            s   ->  "\t(#{s})"
+          end <>
+          "\t" <> x.cmd <> "\n"
+      end <>
+      # and finally the last line of the output, which (hopefully) tells the
+      # user something useful!
+      case Map.get(st.data, p) do
+        nil ->  ""
+        x   ->  "\t" <> (x |> String.rstrip |> String.replace(~r(.*\n), "")) <> "\n"
+      end
+    end)
   end
 
   defp _show_data(st, list, id), do: _show_data(st, _id2p(list, id))
