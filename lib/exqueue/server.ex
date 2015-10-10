@@ -89,6 +89,25 @@ defmodule ExQueue.Server do
     {:reply, msg1 <> msg2, st}
   end
 
+  def handle_call({:purge, _pwd, patt}, _from, st = %State{history: h}) do
+    oh = h
+
+    # remove completed jobs (i.e., having ':end') with 'cmd' matching 'patt' from history...
+    h = h
+        |>  Enum.filter(fn {_pid, j = %{cmd: cmd}} ->
+              !(j[:end] && String.match?(cmd, ~r(#{patt})))
+            end)
+        |>  Enum.into(%{})  # get back a map from the list of tuples
+    # ... and update state
+    st =  struct(st, history: h)
+
+    # remove purged pids from the "done" list and "data" map and update history in one go
+    st =  Map.keys(oh) -- Map.keys(h)
+          |> Enum.reduce(st, fn pid, st -> _purge(st, pid) end)
+
+    {:reply, "#{Enum.count(oh) - Enum.count(h)} jobs purged", st}
+  end
+
   def handle_call({:status, _pwd}, _from, st) do
     msg = """
       LIMIT: #{st.limit}
@@ -210,8 +229,10 @@ defmodule ExQueue.Server do
 
   end
 
-  defp _purge(st, id) do
-    p = _id2p(st.done, id)
+  defp _purge(st, id) when is_binary(id) do
+    _purge(st, _id2p(st.done, id))
+  end
+  defp _purge(st, p) do
     struct(st,
       done: st.done -- [p],
       data: Map.delete(st.data, p),
