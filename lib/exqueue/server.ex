@@ -65,6 +65,13 @@ defmodule ExQueue.Server do
     {:reply, msg, st}
   end
 
+  def handle_call({:jump, _pwd, patt}, _from, st = %State{queue: q}) do
+    q1 = Enum.filter(q, fn {_pwd, cmd} ->  String.match?(cmd, ~r(#{patt})) end)
+    q2 = Enum.filter(q, fn {_pwd, cmd} -> !String.match?(cmd, ~r(#{patt})) end)
+
+    {:reply, "#{Enum.count(q1)} jobs jumped", struct(st, queue: q1 ++ q2)}
+  end
+
   def handle_call({:cancel, _pwd, patt}, _from, st = %State{queue: q}) do
     cancelled = Enum.filter(q, fn {_pwd, cmd} -> String.match?(cmd, ~r(#{patt})) end)
     msg = Enum.into(cancelled, "", fn x -> "#{inspect x}\n" end)

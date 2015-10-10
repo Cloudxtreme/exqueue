@@ -40,9 +40,9 @@ document.
     xq e            # or, 'xq errors'
 
 Note that there are many more commands: run (force a command to run
-immediately), limit (set the number of concurrent jobs allowed), history,
-cancel (cancel jobs in queue), redo, purge (cleanup history).  See the
-"Commands" section later in this document.
+immediately), limit (set the number of concurrent jobs allowed), history, jump
+(to the head of the queue), cancel (cancel jobs in queue), redo, purge
+(cleanup history).  See the "Commands" section later in this document.
 
 # Quoting, special filenames, etc.
 
@@ -176,10 +176,14 @@ end time or exit status fields.
 From the history, print the commands that failed, i.e., had a non-zero shell
 exit status.
 
+## `jump <pattern>`
+
+Find jobs in the queue whose shell command+arguments match the pattern and
+jump them to head of the queue.
+
 ## `cancel <pattern>`
 
-Cancel jobs in queue whose shell command+arguments matches the pattern
-supplied.
+Cancel jobs in queue whose shell command+arguments match the pattern supplied.
 
 ## `redo <pattern>`
 
