@@ -216,7 +216,7 @@ defmodule ExQueue.Server do
 
   defp _add_data(st, p, d) do
     struct(st,
-      data: Map.put(st.data, p, Map.get(st.data, p, "") <> d)
+      data: Map.update(st.data, p, d, &(&1 <> d))
     )
   end
 
@@ -241,7 +241,7 @@ defmodule ExQueue.Server do
   defp _purge(st, p) do
     struct(st,
       done: st.done -- [p],
-      data: Map.delete(st.data, p),
+      data: Map.delete(st.data, p)
     )
   end
 
