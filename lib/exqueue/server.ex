@@ -66,14 +66,14 @@ defmodule ExQueue.Server do
   end
 
   def handle_call({:jump, _pwd, patt}, _from, st = %State{queue: q}) do
-    q1 = Enum.filter(q, fn {_pwd, cmd} ->  String.match?(cmd, ~r(#{patt})) end)
-    q2 = Enum.filter(q, fn {_pwd, cmd} -> !String.match?(cmd, ~r(#{patt})) end)
+    q1 = Enum.filter(q, fn {_pwd, cmd} ->  String.match?(cmd, ~r(#{patt})i) end)
+    q2 = Enum.filter(q, fn {_pwd, cmd} -> !String.match?(cmd, ~r(#{patt})i) end)
 
     {:reply, "#{Enum.count(q1)} jobs jumped", struct(st, queue: q1 ++ q2)}
   end
 
   def handle_call({:cancel, _pwd, patt}, _from, st = %State{queue: q}) do
-    cancelled = Enum.filter(q, fn {_pwd, cmd} -> String.match?(cmd, ~r(#{patt})) end)
+    cancelled = Enum.filter(q, fn {_pwd, cmd} -> String.match?(cmd, ~r(#{patt})i) end)
     msg = Enum.into(cancelled, "", fn x -> "#{inspect x}\n" end)
       <> "#{Enum.count(cancelled)} jobs cancelled"
     st = struct(st, queue: q -- cancelled)
@@ -85,7 +85,7 @@ defmodule ExQueue.Server do
     nj =  h # remember, h is %{pid => %{:cmd => ..., :pwd => ..., ...}}
           |>  Enum.flat_map(fn {_pid, j = %{pwd: pwd, cmd: cmd}} ->
                 # completed jobs (i.e., having ':end') with 'cmd' matching 'patt'
-                if j[:end] && String.match?(cmd, ~r(#{patt})),
+                if j[:end] && String.match?(cmd, ~r(#{patt})i),
                   do:   [{pwd, cmd}],
                   else: []
               end)
@@ -102,7 +102,7 @@ defmodule ExQueue.Server do
     # remove completed jobs (i.e., having ':end') with 'cmd' matching 'patt' from history...
     h = h
         |>  Enum.filter(fn {_pid, j = %{cmd: cmd}} ->
-              !(j[:end] && String.match?(cmd, ~r(#{patt})))
+              !(j[:end] && String.match?(cmd, ~r(#{patt})i))
             end)
         |>  Enum.into(%{})  # get back a map from the list of tuples
     # ... and update state
