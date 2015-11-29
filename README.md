@@ -1,3 +1,5 @@
+**abandoned** -- see <https://github.com/sitaramc/exqueue/wiki>
+
 # ExQueue -- shell command execution queue
 
 `exqueue` is a command to manage an "execution queue" -- a queue of pending
